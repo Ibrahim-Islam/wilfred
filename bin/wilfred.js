@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _os = require('os');
 
@@ -43,6 +43,7 @@ var CONFIG_PATH = _path2.default.join(HOMEDIR, '.' + PKG.name + '.json');
 var DEFAULT_CONFIG = {
     boilerplates: []
 };
+var WILFREDIGNORE_FILENAME = '.wilfredignore';
 
 _commander2.default.version(PKG.version).usage('[options] [boilerplate name] [location]').option('-a, --add', 'Save given path as boilerplate').option('-f, --force', 'Force copying the boilerplate to destination').option('-l, --list', 'Returns the list of boilerplates').option('-r, --remove', 'Remove boilerplate by name').option('-s, --silent', 'Run in silent mode (requires passing at least boilerplate parameter)').parse(process.argv);
 
@@ -131,6 +132,17 @@ var Wilfred = function () {
             });
         }
     }, {
+        key: 'readIgnoreFileSync',
+        value: function readIgnoreFileSync(root) {
+            var paths = [];
+            try {
+                paths = _fsExtra2.default.readFileSync(root + "\\" + WILFREDIGNORE_FILENAME).toString().split("\n").map(function (value) {
+                    return value.replace("/", "\\").trim();
+                });
+            } catch (error) {}
+            return paths;
+        }
+    }, {
         key: 'copy',
         value: function copy(options) {
             var _this2 = this;
@@ -139,7 +151,15 @@ var Wilfred = function () {
                 return item.boilerplate === options.boilerplate;
             }),
                 execCopy = function execCopy(from, to) {
-                _fsExtra2.default.copy(from, to, function (err) {
+                var ignorePaths = _this2.readIgnoreFileSync(from);
+
+                var filter = function filter(path) {
+                    return ignorePaths.every(function (value, index) {
+                        return path !== from + "\\" + value;
+                    });
+                };
+
+                _fsExtra2.default.copy(from, to, { filter: filter }, function (err) {
                     if (err) return console.error(err);
                     !_commander2.default.silent && console.log('Boilerplate copied to destination!');
                     _this2.postCopy(to);
